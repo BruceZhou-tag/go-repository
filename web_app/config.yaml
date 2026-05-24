@@ -1,8 +1,12 @@
 app:
   name: "web_app"
   mode: "dev"
-  port: 8081
+  port: 8080
   version: "v0.0.1"
+auth:
+  jwt_salt: "bluebell-jwt-salt"
+  issuer: "bluebell"
+  expire_hour: 24
 log:
   level: "debug"
   filename: "web_app.log"

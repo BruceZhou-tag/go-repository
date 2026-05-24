@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,7 +14,7 @@ import (
 	"web_app/logger"
 	"web_app/pkg/snowflake"
 	"web_app/routes"
-	"web_app/settings"
+	"web_app/setting"
 
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -28,12 +27,12 @@ func main() {
 	var filepath string
 	flag.StringVar(&filepath, "filepath", "./config", "filepath")
 	flag.Parse()
-	if err := settings.Init(filepath); err != nil {
-		fmt.Printf("init settings failed,err!%v\n", err)
+	if err := setting.Init(filepath); err != nil {
+		fmt.Printf("init setting failed,err!%v\n", err)
 		return
 	}
 	// 2.初始化日志
-	if err := logger.Init(settings.Conf.LogConfig); err != nil {
+	if err := logger.Init(setting.Conf.LogConfig, setting.Conf.AppConfig.Mode); err != nil {
 		fmt.Printf("init logger failed,err!%v\n", err)
 		return
 	}
@@ -53,13 +52,13 @@ func main() {
 	}
 	defer redis.Close()
 
-	if err := snowflake.Init(settings.Conf.StartTime, settings.Conf.MachineId); err != nil {
+	if err := snowflake.Init(setting.Conf.StartTime, setting.Conf.MachineId); err != nil {
 		fmt.Printf("init snowflake failed,err:%v\n", err)
 		return
 	}
-	
+
 	// 5.注册路由
-	r := routes.Setup()
+	r := routes.Setup(setting.Conf.AppConfig.Mode)
 	// 6.启动服务（优雅关机）
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", viper.GetInt("app.port")),
@@ -68,9 +67,11 @@ func main() {
 	go func() {
 		// 开启一个 goroutine 启动服务
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+			// log.Fatalf("listen: %s\n", err)
+			zap.L().Fatal("listen: %s failed", zap.Error(err))
 		}
 	}()
+
 	// 等待中断信号来优雅地关闭服务器，未关闭服务器操作设置一个 5 秒的超时
 	quit := make(chan os.Signal, 1) // 创建一个接收信号的通道
 	// kill 默认会发送 syscall.SIGTERM 信号
