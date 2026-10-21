@@ -1,21 +1,26 @@
 package main
 
 import (
+	"log"
 	"time"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func main() {
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
-	url := "www.google.com"
-	logger.Info("failed to fetch URL",
-		zap.String("url", url),
-		zap.Int("attempt", 3),
-		zap.Duration("backoff", time.Second))
+	loggerConfig := zap.NewProductionConfig()
+	loggerConfig.EncoderConfig.TimeKey = "timestamp"
+	loggerConfig.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout(time.RFC3339)
+
+	logger, err := loggerConfig.Build()
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	logger.Info("Hello from zap logger")
 }
 
 /*
-{"level":"info","ts":1792565665.8771222,"caller":"zap-demo/main.go:13","msg":"failed to fetch URL","url":"www.google.com","attempt":3,"backoff":1}
+{"level":"info","timestamp":"2026-10-21T15:01:13+08:00","caller":"zap-demo/main.go:21","msg":"Hello from zap logger"}
 */
